@@ -5,12 +5,15 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 ##Sheet###############################
+#내가 사용할 google api
 scope = [
 'https://spreadsheets.google.com/feeds',
 'https://www.googleapis.com/auth/drive',
 ]
 
-json_file_name = 'analog-hull-281314-9e20421b69a5.json'
+#파이썬과 같은 경로에 복사 from 구글api
+
+json_file_name = 'analog-hull-281314-3e3305abac8a.json'
 
 credentials = ServiceAccountCredentials.from_json_keyfile_name(json_file_name, scope)
 gc = gspread.authorize(credentials)
@@ -27,6 +30,7 @@ worksheet_region = doc.worksheet('corona_region')
 sheetcontentslist = []
 
 ########################################################
+#웹크롤링 영역
 
 import requests
 from bs4 import BeautifulSoup
@@ -43,9 +47,14 @@ def getInfo(_url):
     if _html == '':
         return
     print(_html)
+
+    
     _soup = BeautifulSoup(_html, 'html.parser')
 
     tbody_list = _soup.select('tbody')
+
+    #tbody_list[0] : 국내 신고 및 검사 현황(6.25일 0시 기준, 1.3일 이후 누계)
+    #tbody_list[1] :  지역별 확진자 현황(6.25일 0시 기준, 1.3일 이후 누계) >
  
    
     ########Regional Data###################################################################
@@ -57,24 +66,18 @@ def getInfo(_url):
     city = ["서울","부산","대구","인천","광주","대전","울산","세종","경기","강원","충북","충남","전북","전남","경북","경남","제주","검역"]
 
     for i in range(len(city)):
-        print(i)
-
+        print(i) #0
+        #격리자
         isolation = tbody_list[1].select('tr')[1].select('td')[i+2].select('p')[0].select('span')[0].text
+        #격리해제
         recover = tbody_list[1].select('tr')[2].select('td')[i+2].select('p')[0].select('span')[0].text
+        #사망
         death = tbody_list[1].select('tr')[3].select('td')[i+2].select('p')[0].select('span')[0].text
 
         print(city[i] + " : " + isolation + ", " + recover + ", " + death  )
         result = [ isolation, death, recover]
         sheetcontentslist.append(result)
-        '''
-        #city_result += city[i] + " : " +  tbody_list[2].select('tr')[i+2].select('td')[1].select('p')[0].select('span')[0].text + '\n'
-
-        city_result += city[i] + " : " +  tbody_list[1].select('tr')[4].select('td')[i+2].select('p')[0].select('span')[0].text + '\n'
-        #sheet_element.append(tbody_list[2].select('tr')[i+2].select('td')[1].select('p')[0].select('span')[0].text.replace(',',''))
-        sheet_element.append(tbody_list[1].select('tr')[4].select('td')[i+2].select('p')[0].select('span')[0].text.replace(',',''))
-        #print(city[i] + " : " +  tbody_list[2].select('tr')[i+2].select('td')[1].select('p')[0].select('span')[0].text )
-        print(city[i] + " : " +  tbody_list[1].select('tr')[4].select('td')[i+2].select('p')[0].select('span')[0].text )
-        '''
+      
    
     #UPDATE ALL DATA TO SHEET
     doc.values_update(
@@ -88,69 +91,7 @@ def getInfo(_url):
 
 
 
-getInfo("https://www.cdc.go.kr/board/board.es?mid=a20501000000&bid=0015&act=view&list_no=367594&tag=&nPage=1")
+#getInfo("https://www.cdc.go.kr/board/board.es?mid=a20501000000&bid=0015&act=view&list_no=367594&tag=&nPage=1")
 
+getInfo("https://www.cdc.go.kr//board/board.es?mid=a20501000000&bid=0015&act=view&list_no=367606&tag=&nPage=1")
 
-'''
-
-while True:
-    
-    req = requests.get('https://www.cdc.go.kr/board/board.es?mid=a20501000000&bid=0015')
-    req.encoding = 'utf-8'
-    html = req.text
-    
-    if html != '':
-        soup = BeautifulSoup(html, 'html.parser')
-    else: 
-        continue
-
-    li_list =  soup.select('#listView > ul > li')
-    if len(li_list) > 1:
-        url_latest = "https://www.cdc.go.kr" + li_list[1].select('a')[0].attrs['href']
-    else: 
-        continue
-
-    title_latest = li_list[1].select('a')[0].attrs['title']
-
-    #print(title_latest)
-
-    print("Latest URL : " + url_latest)
-    print("Title : " + title_latest)
-    
-    latest = url_latest
-    
-#####
-    with open(os.path.join(BASE_DIR, 'latest.txt'), 'r+') as f_read:
-        before = f_read.readline()
-        print("Before in file : " + before)
-
-        if before != latest:
-            print("New Post")
-            result_text = ""
-
-            credentials = ServiceAccountCredentials.from_json_keyfile_name(json_file_name, scope)
-            gc = gspread.authorize(credentials)
-
-            if '현황' in title_latest:
-                print("현황 게시글 : " + title_latest)
-                result_text = getInfo(url_latest)
-                sendTelegramMassge(title_latest +'\n' + url_latest)
-                if result_text != None:
-                    sendTelegramMassge(result_text)
-            else:
-                sendTelegramMassge("질본 보도자료 신규 등록" + '\n' + title_latest + '\n' + url_latest)
-                       
-        else:
-            print("No Post")
-            #bot.sendMessage(chat_id='439074326', text='No Post')
-            
-        f_read.close()
-
-    with open(os.path.join(BASE_DIR, 'latest.txt'), 'w+') as f_write:
-        f_write.write(latest)
-        f_write.close()
-
-
-    
-    time.sleep(60)
-'''
